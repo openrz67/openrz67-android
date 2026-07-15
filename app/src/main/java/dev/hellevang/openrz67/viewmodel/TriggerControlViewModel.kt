@@ -50,7 +50,13 @@ class TriggerControlViewModel(
             _isBulbActive.value = false
             bluetoothManager.sendSignal(BluetoothManager.SignalType.BulbMode, false)
         }
-        
+
+        // If leaving countdown mode while a countdown is running, cancel it —
+        // otherwise the trigger keeps blinking and fires when it expires
+        if (_triggerType.value == TriggerType.Countdown && _startDelayedTrigger.value) {
+            stopCountdown()
+        }
+
         _triggerType.value = when (_triggerType.value) {
             TriggerType.Direct -> TriggerType.Countdown
             TriggerType.Countdown -> TriggerType.Bulb
