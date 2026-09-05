@@ -6,10 +6,15 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
@@ -21,11 +26,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -34,11 +40,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
-import androidx.core.view.WindowCompat
 import dev.hellevang.openrz67.ui.components.HeaderComponent
 import dev.hellevang.openrz67.ui.components.TriggerButtonPanel
-import dev.hellevang.openrz67.ui.theme.Colors
 import dev.hellevang.openrz67.ui.theme.Dimens
 import dev.hellevang.openrz67.ui.theme.OpenRZ67Theme
 import dev.hellevang.openrz67.viewmodel.TriggerControlViewModel
@@ -70,9 +73,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = Colors.StatusBarColor.toColorInt()
-        window.navigationBarColor = Colors.NavigationBarColor.toColorInt()
+        // Background is always light, so force dark system bar icons
+        val bars = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
 
         if (hasPermissions()) ensureBluetoothEnabled() else requestPermissions.launch(requiredPermissions)
 
@@ -106,10 +109,14 @@ class MainActivity : ComponentActivity() {
 private fun OpenRZ67App(viewModel: TriggerControlViewModel) {
     val connectionState by viewModel.connectionState.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
+    val countdownRunning by viewModel.startDelayedTrigger.collectAsState()
+    val isBulbActive by viewModel.isBulbActive.collectAsState()
+
+    KeepScreenOn(countdownRunning || isBulbActive)
 
     Box {
         Image(
-            painter = painterResource(R.drawable.d3fe691b34130991a5bf05a25d54d74300316eaff150963be736948feb5ec159),
+            painter = painterResource(R.drawable.background),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Fit
@@ -117,7 +124,7 @@ private fun OpenRZ67App(viewModel: TriggerControlViewModel) {
     }
 
     Column(
-        modifier = Modifier.statusBarsPadding()
+        modifier = Modifier.systemBarsPadding()
     ) {
         HeaderComponent()
         Spacer(modifier = Modifier.padding(top = Dimens.TopSectionPadding))
@@ -142,6 +149,16 @@ private fun OpenRZ67App(viewModel: TriggerControlViewModel) {
         ) {
             TriggerButtonPanel(viewModel, isConnected)
         }
+    }
+}
+
+/** Keeps the display on while an exposure or countdown is in progress. */
+@Composable
+private fun KeepScreenOn(enabled: Boolean) {
+    val window = LocalActivity.current?.window ?: return
+    DisposableEffect(enabled) {
+        if (enabled) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 }
 
