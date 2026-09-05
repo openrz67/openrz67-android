@@ -1,22 +1,26 @@
 <resources>
     <string name="app_name">Open RZ67 Trigger</string>
     <string name="header_title">OpenRZ67</string>
-    <string name="header_subtitle">A Mamiya RZ67 bluetooth trigger</string>
     <string name="permission_required">Bluetooth permission is required</string>
-
-    <string name="mode">Mode</string>
     <string name="reconnect">Reconnect</string>
-    <string name="direct_hint">Press the button to take a picture</string>
-    <string name="bulb_hint_on">LED is ON - Shutter is OPEN</string>
-    <string name="bulb_hint_off">Press button to toggle LED and shutter</string>
-    <string name="countdown_prefix">Start</string>
-    <string name="countdown_suffix">countdown</string>
-    <string name="seconds_short">%1$ds</string>
-    <string name="minutes_short">%1$dm</string>
 
-    <string name="trigger_shutter">Trigger shutter</string>
+    <string name="mode_direct">Direct</string>
+    <string name="mode_countdown">Countdown</string>
+    <string name="mode_bulb">Bulb</string>
+
+    <string name="direct_hint">Press the shutter to take a picture</string>
+    <string name="countdown_delay">Delay</string>
+    <string name="countdown_running_hint">Shutter fires when the count reaches zero</string>
+    <string name="bulb_hint_off">Open the shutter for a long exposure</string>
+    <string name="bulb_hint_on">Shutter is open</string>
+
+    <string name="shutter">Shutter</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
-    <string name="turn_on">Turn ON</string>
-    <string name="turn_off">Turn OFF</string>
+    <string name="open">Open</string>
+    <string name="close">Close</string>
+
+    <string name="seconds_short">%1$ds</string>
+    <string name="minutes_short">%1$dm</string>
+    <string name="elapsed_format">%1$d:%2$02d</string>
 </resources>

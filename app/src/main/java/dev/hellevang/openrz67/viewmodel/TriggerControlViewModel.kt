@@ -36,10 +36,14 @@ class TriggerControlViewModel(
     private val _isBulbActive = MutableStateFlow(false)
     val isBulbActive: StateFlow<Boolean> = _isBulbActive.asStateFlow()
 
+    private val _bulbElapsedSeconds = MutableStateFlow(0)
+    val bulbElapsedSeconds: StateFlow<Int> = _bulbElapsedSeconds.asStateFlow()
+
     val connectionState: StateFlow<String> = bluetoothManager.connectionState
     val isConnected: StateFlow<Boolean> = bluetoothManager.isConnected
 
     private var countdownJob: Job? = null
+    private var bulbJob: Job? = null
 
     enum class TriggerType {
         Direct,
@@ -59,18 +63,11 @@ class TriggerControlViewModel(
         bluetoothManager.manualReconnect()
     }
 
-    fun toggleTriggerType() {
-        if (_triggerType.value == TriggerType.Bulb && _isBulbActive.value) {
-            setBulb(false)
-        }
-        if (_triggerType.value == TriggerType.Countdown && _startDelayedTrigger.value) {
-            stopCountdown()
-        }
-        _triggerType.value = when (_triggerType.value) {
-            TriggerType.Direct -> TriggerType.Countdown
-            TriggerType.Countdown -> TriggerType.Bulb
-            TriggerType.Bulb -> TriggerType.Direct
-        }
+    fun setTriggerType(type: TriggerType) {
+        if (type == _triggerType.value) return
+        if (_isBulbActive.value) setBulb(false)
+        if (_startDelayedTrigger.value) stopCountdown()
+        _triggerType.value = type
     }
 
     fun handleTriggerButtonClick() {
@@ -87,7 +84,19 @@ class TriggerControlViewModel(
         }
     }
 
-    private fun setBulb(on: Boolean) = send(onSuccess = { _isBulbActive.value = on }) {
+    private fun setBulb(on: Boolean) = send(onSuccess = {
+        _isBulbActive.value = on
+        bulbJob?.cancel()
+        _bulbElapsedSeconds.value = 0
+        if (on) {
+            bulbJob = viewModelScope.launch {
+                while (true) {
+                    delay(1000)
+                    _bulbElapsedSeconds.value += 1
+                }
+            }
+        }
+    }) {
         bluetoothManager.sendSignal(SignalType.BulbMode, on)
     }
 

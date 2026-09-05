@@ -1,30 +1,44 @@
 package dev.hellevang.openrz67.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.core.graphics.toColorInt
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color("#2A5555".toColorInt()),        // Deep Teal for primary buttons
-    secondary = Color("#B8660A".toColorInt()),      // Burnt Orange for secondary actions
-    background = Color("#FBE7C9".toColorInt()),     // Warm cream background
-    surface = Color("#FFFEF8".toColorInt()),        // Warm white for cards/surfaces
-    onPrimary = Color("#FFFEF8".toColorInt()),      // White text on primary
-    onSecondary = Color("#FFFEF8".toColorInt()),    // White text on secondary
-    onBackground = Color("#3D2914".toColorInt()),   // Dark brown for main text
-    onSurface = Color("#2C1810".toColorInt())       // Rich espresso for surface text
+    primary = Color(0xFF2A5555),          // Deep teal
+    onPrimary = Color(0xFFFFFEF8),
+    secondary = Color(0xFFB8660A),        // Burnt orange, used for "active/stop"
+    onSecondary = Color(0xFFFFFEF8),
+    background = Color(0xFFFBE7C9),       // Warm cream, matches the illustration
+    onBackground = Color(0xFF3D2914),
+    surface = Color(0xFFFFFEF8),
+    onSurface = Color(0xFF2C1810),
+    surfaceVariant = Color(0xFFF1DDBB),
+    onSurfaceVariant = Color(0xFF5C4630),
+    outline = Color(0xFF8C7458)
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFF6FB3B3),
+    onPrimary = Color(0xFF0F2A2A),
+    secondary = Color(0xFFE8963A),
+    onSecondary = Color(0xFF2C1810),
+    background = Color(0xFF1B140E),       // Dark brown, easy on night vision
+    onBackground = Color(0xFFF1E3CC),
+    surface = Color(0xFF241B13),
+    onSurface = Color(0xFFF1E3CC),
+    surfaceVariant = Color(0xFF33281E),
+    onSurfaceVariant = Color(0xFFCBB79A),
+    outline = Color(0xFF7A6448)
 )
 
 @Composable
-fun OpenRZ67Theme(
-    content: @Composable () -> Unit
-) {
+fun OpenRZ67Theme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = LightColorScheme,
-        typography = Typography,
-        shapes = Shapes,
+        colorScheme = if (isSystemInDarkTheme()) DarkColorScheme else LightColorScheme,
         content = content
     )
 }

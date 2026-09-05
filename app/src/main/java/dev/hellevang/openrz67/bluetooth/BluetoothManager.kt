@@ -61,7 +61,12 @@ class BluetoothManager(private val scope: CoroutineScope) : BluetoothLink {
                 connect()
 
                 peripheral.state.collect { state ->
-                    _connectionState.value = state.toString()
+                    _connectionState.value = when (state) {
+                        is State.Connected -> "Connected"
+                        is State.Connecting -> "Connecting..."
+                        is State.Disconnecting -> "Disconnecting..."
+                        is State.Disconnected -> "Disconnected"
+                    }
                     _isConnected.value = state is State.Connected
                 }
             } catch (e: Exception) {

@@ -44,7 +44,7 @@ class TriggerControlViewModelTest {
 
     @Test
     fun `countdown runs locally after successful write`() = runTest(dispatcher) {
-        vm.toggleTriggerType()
+        vm.setTriggerType(TriggerType.Countdown)
         vm.handleTriggerButtonClick()
         runCurrent()
         assertEquals(listOf("countdown 10 start"), link.writes)
@@ -59,7 +59,7 @@ class TriggerControlViewModelTest {
     @Test
     fun `failed write does not start countdown`() = runTest(dispatcher) {
         link.fail = true
-        vm.toggleTriggerType()
+        vm.setTriggerType(TriggerType.Countdown)
         vm.handleTriggerButtonClick()
         runCurrent()
         assertFalse(vm.startDelayedTrigger.value)
@@ -68,11 +68,11 @@ class TriggerControlViewModelTest {
 
     @Test
     fun `leaving countdown mode stops a running countdown`() = runTest(dispatcher) {
-        vm.toggleTriggerType()
+        vm.setTriggerType(TriggerType.Countdown)
         vm.handleTriggerButtonClick()
         runCurrent()
 
-        vm.toggleTriggerType()
+        vm.setTriggerType(TriggerType.Bulb)
         runCurrent()
         assertEquals(TriggerType.Bulb, vm.triggerType.value)
         assertFalse(vm.startDelayedTrigger.value)
@@ -81,25 +81,26 @@ class TriggerControlViewModelTest {
 
     @Test
     fun `bulb toggles and is released when leaving bulb mode`() = runTest(dispatcher) {
-        vm.toggleTriggerType()
-        vm.toggleTriggerType()
+        vm.setTriggerType(TriggerType.Bulb)
         vm.handleTriggerButtonClick()
         runCurrent()
         assertTrue(vm.isBulbActive.value)
         assertEquals("BulbMode on", link.writes.last())
+        advanceTimeBy(3_001)
+        assertEquals(3, vm.bulbElapsedSeconds.value)
 
-        vm.toggleTriggerType()
+        vm.setTriggerType(TriggerType.Direct)
         runCurrent()
         assertEquals(TriggerType.Direct, vm.triggerType.value)
         assertFalse(vm.isBulbActive.value)
+        assertEquals(0, vm.bulbElapsedSeconds.value)
         assertEquals("BulbMode off", link.writes.last())
     }
 
     @Test
     fun `failed bulb write leaves state unchanged`() = runTest(dispatcher) {
         link.fail = true
-        vm.toggleTriggerType()
-        vm.toggleTriggerType()
+        vm.setTriggerType(TriggerType.Bulb)
         vm.handleTriggerButtonClick()
         runCurrent()
         assertFalse(vm.isBulbActive.value)

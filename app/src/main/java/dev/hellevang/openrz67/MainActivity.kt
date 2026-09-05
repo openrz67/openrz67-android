@@ -17,32 +17,23 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import dev.hellevang.openrz67.ui.components.HeaderComponent
-import dev.hellevang.openrz67.ui.components.TriggerButtonPanel
-import dev.hellevang.openrz67.ui.theme.Dimens
+import dev.hellevang.openrz67.ui.components.ControlPanel
+import dev.hellevang.openrz67.ui.components.Header
+import dev.hellevang.openrz67.ui.components.Stage
 import dev.hellevang.openrz67.ui.theme.OpenRZ67Theme
 import dev.hellevang.openrz67.viewmodel.TriggerControlViewModel
 
@@ -72,9 +63,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Background is always light, so force dark system bar icons
-        val bars = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        val bars = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
 
         if (hasPermissions()) ensureBluetoothEnabled() else requestPermissions.launch(requiredPermissions)
@@ -109,46 +98,40 @@ class MainActivity : ComponentActivity() {
 private fun OpenRZ67App(viewModel: TriggerControlViewModel) {
     val connectionState by viewModel.connectionState.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
+    val triggerType by viewModel.triggerType.collectAsState()
     val countdownRunning by viewModel.startDelayedTrigger.collectAsState()
+    val countdownTimeLeft by viewModel.countdownTimeLeft.collectAsState()
+    val countdownDuration by viewModel.countdownDuration.collectAsState()
     val isBulbActive by viewModel.isBulbActive.collectAsState()
+    val bulbElapsed by viewModel.bulbElapsedSeconds.collectAsState()
 
     KeepScreenOn(countdownRunning || isBulbActive)
 
-    Box {
-        Image(
-            painter = painterResource(R.drawable.background),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
-        )
-    }
-
     Column(
-        modifier = Modifier.systemBarsPadding()
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .padding(horizontal = 20.dp)
     ) {
-        HeaderComponent()
-        Spacer(modifier = Modifier.padding(top = Dimens.TopSectionPadding))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = Dimens.TopSectionPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(connectionState, color = MaterialTheme.colorScheme.onBackground)
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .padding(top = Dimens.TopSectionPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            TriggerButtonPanel(viewModel, isConnected)
-        }
+        Header(connectionState, isConnected, onReconnect = viewModel::reconnectBluetooth)
+        Stage(
+            readout = when {
+                countdownRunning -> countdownTimeLeft.toString()
+                isBulbActive -> stringResource(R.string.elapsed_format, bulbElapsed / 60, bulbElapsed % 60)
+                else -> null
+            },
+            modifier = Modifier.weight(1f)
+        )
+        ControlPanel(
+            triggerType = triggerType,
+            isConnected = isConnected,
+            countdownRunning = countdownRunning,
+            countdownDuration = countdownDuration,
+            isBulbActive = isBulbActive,
+            onSelectMode = viewModel::setTriggerType,
+            onDurationChange = viewModel::setCountdownDuration,
+            onShutter = viewModel::handleTriggerButtonClick
+        )
     }
 }
 
@@ -159,18 +142,5 @@ private fun KeepScreenOn(enabled: Boolean) {
     DisposableEffect(enabled) {
         if (enabled) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun DefaultPreview() {
-    OpenRZ67Theme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            HeaderComponent()
-        }
     }
 }
