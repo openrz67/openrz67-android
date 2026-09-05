@@ -14,6 +14,6 @@ The app works as intended for my use case, but I'm sure there are lots of improv
 Check out [releases](https://github.com/mhellevang/openrz67-android/releases/), or clone the repo and build it yourself.
 
 ## Look & feel
-Not necessarily up to date.
+Follows the system light/dark setting.
 
-<img src="docs/images/Direct.jpg" width="400" alt="Direct">
+<img src="docs/images/direct.jpg" width="200" alt="Direct mode"> <img src="docs/images/countdown.jpg" width="200" alt="Countdown running"> <img src="docs/images/bulb.jpg" width="200" alt="Bulb exposure with elapsed time"> <img src="docs/images/dark.jpg" width="200" alt="Dark theme">
