@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.material.Button
-import androidx.compose.material.Icon
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Refresh
@@ -64,7 +64,7 @@ fun TriggerButtonPanel(
     
     Text(
         fontSize = Dimens.SubHeaderTextSize,
-        color = MaterialTheme.colors.onBackground,
+        color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentWidth(Alignment.CenterHorizontally)
@@ -85,7 +85,7 @@ fun TriggerButtonPanel(
             TriggerControlViewModel.TriggerType.Direct -> {
                 Text(
                     fontSize = Dimens.BodyTextSize,
-                    color = MaterialTheme.colors.onBackground,
+                    color = MaterialTheme.colorScheme.onBackground,
                     text = stringResource(R.string.direct_hint)
                 )
             }
@@ -100,7 +100,7 @@ fun TriggerButtonPanel(
             TriggerControlViewModel.TriggerType.Bulb -> {
                 Text(
                     fontSize = Dimens.BodyTextSize,
-                    color = MaterialTheme.colors.onBackground,
+                    color = MaterialTheme.colorScheme.onBackground,
                     text = stringResource(if (isBulbActive) R.string.bulb_hint_on else R.string.bulb_hint_off)
                 )
             }
@@ -124,7 +124,7 @@ fun TriggerButtonPanel(
         Icon(
             imageVector = Icons.Default.Camera,
             contentDescription = null,
-            tint = MaterialTheme.colors.onPrimary
+            tint = MaterialTheme.colorScheme.onPrimary
         )
     }
 }

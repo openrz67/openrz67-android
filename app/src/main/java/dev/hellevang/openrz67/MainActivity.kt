@@ -27,9 +27,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
             OpenRZ67Theme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     OpenRZ67App(viewModel)
                 }
@@ -136,7 +136,7 @@ private fun OpenRZ67App(viewModel: TriggerControlViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(connectionState, color = MaterialTheme.colors.onBackground)
+            Text(connectionState, color = MaterialTheme.colorScheme.onBackground)
         }
 
         Column(
@@ -168,7 +168,7 @@ private fun DefaultPreview() {
     OpenRZ67Theme {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colors.background
+            color = MaterialTheme.colorScheme.background
         ) {
             HeaderComponent()
         }

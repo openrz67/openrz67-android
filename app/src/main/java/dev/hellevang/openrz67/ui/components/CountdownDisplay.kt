@@ -3,11 +3,11 @@ package dev.hellevang.openrz67.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +34,7 @@ fun CountdownDisplay(
         if (countdownTimeLeft > 0) {
             Text(
                 fontSize = Dimens.CountdownTextSize,
-                color = MaterialTheme.colors.secondary,
+                color = MaterialTheme.colorScheme.secondary,
                 text = "$countdownTimeLeft"
             )
         }
@@ -44,7 +44,7 @@ fun CountdownDisplay(
         ) {
             Text(
                 fontSize = Dimens.BodyTextSize,
-                color = MaterialTheme.colors.onBackground,
+                color = MaterialTheme.colorScheme.onBackground,
                 text = stringResource(R.string.countdown_prefix)
             )
             
@@ -62,20 +62,19 @@ fun CountdownDisplay(
                 ) {
                     durationOptions.forEach { seconds ->
                         DropdownMenuItem(
+                            text = { Text(durationLabel(seconds)) },
                             onClick = {
                                 onDurationChange(seconds)
                                 dropdownExpanded = false
                             }
-                        ) {
-                            Text(durationLabel(seconds))
-                        }
+                        )
                     }
                 }
             }
             
             Text(
                 fontSize = Dimens.BodyTextSize,
-                color = MaterialTheme.colors.onBackground,
+                color = MaterialTheme.colorScheme.onBackground,
                 text = stringResource(R.string.countdown_suffix)
             )
         }
