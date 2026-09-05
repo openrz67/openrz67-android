@@ -3,7 +3,10 @@ package dev.hellevang.openrz67.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.hellevang.openrz67.bluetooth.BluetoothLink
 import dev.hellevang.openrz67.bluetooth.BluetoothManager
+import dev.hellevang.openrz67.bluetooth.SignalType
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,9 +14,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class TriggerControlViewModel : ViewModel() {
+class TriggerControlViewModel(
+    link: (CoroutineScope) -> BluetoothLink = ::BluetoothManager
+) : ViewModel() {
 
-    private val bluetoothManager = BluetoothManager(viewModelScope)
+    private val bluetoothManager = link(viewModelScope)
     private var bluetoothStarted = false
 
     private val _triggerType = MutableStateFlow(TriggerType.Direct)
@@ -70,7 +75,7 @@ class TriggerControlViewModel : ViewModel() {
 
     fun handleTriggerButtonClick() {
         when (_triggerType.value) {
-            TriggerType.Direct -> send { bluetoothManager.sendSignal(BluetoothManager.SignalType.Trigger) }
+            TriggerType.Direct -> send { bluetoothManager.sendSignal(SignalType.Trigger) }
             TriggerType.Countdown -> if (_startDelayedTrigger.value) stopCountdown() else startCountdown()
             TriggerType.Bulb -> setBulb(!_isBulbActive.value)
         }
@@ -83,7 +88,7 @@ class TriggerControlViewModel : ViewModel() {
     }
 
     private fun setBulb(on: Boolean) = send(onSuccess = { _isBulbActive.value = on }) {
-        bluetoothManager.sendSignal(BluetoothManager.SignalType.BulbMode, on)
+        bluetoothManager.sendSignal(SignalType.BulbMode, on)
     }
 
     private fun startCountdown() = send(onSuccess = { startCountdownTimer() }) {

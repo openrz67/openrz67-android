@@ -25,15 +25,15 @@ import kotlin.math.pow
  * Owns the BLE connection to the openrz67-trigger. The peripheral is bound to [scope];
  * cancelling the scope disconnects it and stops the reconnect loop.
  */
-class BluetoothManager(private val scope: CoroutineScope) {
+class BluetoothManager(private val scope: CoroutineScope) : BluetoothLink {
     private lateinit var peripheral: Peripheral
     private val connectionAttempt = AtomicInteger()
 
     private val _connectionState = MutableStateFlow("Not connected")
-    val connectionState: StateFlow<String> = _connectionState.asStateFlow()
+    override val connectionState: StateFlow<String> = _connectionState.asStateFlow()
 
     private val _isConnected = MutableStateFlow(false)
-    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+    override val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     companion object {
         private const val TAG = "BluetoothManager"
@@ -46,13 +46,7 @@ class BluetoothManager(private val scope: CoroutineScope) {
         TARGET_CHARACTERISTIC_UUID.toString()
     )
 
-    /** Firmware command codes: base value = release/off, base + 1 = press/on. */
-    enum class SignalType(val base: Int) {
-        Trigger(10),
-        BulbMode(20)
-    }
-
-    fun initialize() {
+    override fun initialize() {
         scope.launch {
             try {
                 _connectionState.value = "Scanning for devices..."
@@ -101,18 +95,17 @@ class BluetoothManager(private val scope: CoroutineScope) {
         }
     }
 
-    /** Throws if the write fails; callers decide how to surface that. */
-    suspend fun sendCountdown(durationSeconds: Int, start: Boolean) {
+    override suspend fun sendCountdown(durationSeconds: Int, start: Boolean) {
         val action: Byte = if (start) 1 else 0
         peripheral.write(characteristic, byteArrayOf(3, durationSeconds.toByte(), action))
     }
 
-    suspend fun sendSignal(signalType: SignalType, on: Boolean = true) {
+    override suspend fun sendSignal(signalType: SignalType, on: Boolean) {
         val code = signalType.base + if (on) 1 else 0
         peripheral.write(characteristic, byteArrayOf(code.toByte()))
     }
 
-    fun manualReconnect() {
+    override fun manualReconnect() {
         connectionAttempt.set(0)
         if (::peripheral.isInitialized) {
             _connectionState.value = "Manual reconnection..."
