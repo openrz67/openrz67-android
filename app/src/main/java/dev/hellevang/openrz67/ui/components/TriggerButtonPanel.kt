@@ -19,6 +19,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import dev.hellevang.openrz67.R
 import androidx.compose.ui.unit.dp
 import dev.hellevang.openrz67.ui.theme.Dimens
 import dev.hellevang.openrz67.viewmodel.TriggerControlViewModel
@@ -42,7 +44,7 @@ fun TriggerButtonPanel(
                 toggleButton = {
                     viewModel.toggleTriggerType()
                 },
-                text = "Mode"
+                text = stringResource(R.string.mode)
             )
         } else {
             Button(
@@ -52,10 +54,10 @@ fun TriggerButtonPanel(
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Reconnect",
+                    contentDescription = null,
                     modifier = Modifier.padding(end = Dimens.ButtonEndPadding)
                 )
-                Text("Reconnect")
+                Text(stringResource(R.string.reconnect))
             }
         }
     }
@@ -84,7 +86,7 @@ fun TriggerButtonPanel(
                 Text(
                     fontSize = Dimens.BodyTextSize,
                     color = MaterialTheme.colors.onBackground,
-                    text = "Press the button to take a picture"
+                    text = stringResource(R.string.direct_hint)
                 )
             }
             TriggerControlViewModel.TriggerType.Countdown -> {
@@ -99,7 +101,7 @@ fun TriggerButtonPanel(
                 Text(
                     fontSize = Dimens.BodyTextSize,
                     color = MaterialTheme.colors.onBackground,
-                    text = if (isBulbActive) "LED is ON - Shutter is OPEN" else "Press button to toggle LED and shutter"
+                    text = stringResource(if (isBulbActive) R.string.bulb_hint_on else R.string.bulb_hint_off)
                 )
             }
         }
@@ -114,11 +116,11 @@ fun TriggerButtonPanel(
         enabled = isConnected,
     ) {
         val buttonText = when (triggerType) {
-            TriggerControlViewModel.TriggerType.Countdown -> if (startDelayedTrigger) "Stop" else "Start"
-            TriggerControlViewModel.TriggerType.Bulb -> if (isBulbActive) "Turn OFF" else "Turn ON"
-            else -> "Trigger shutter"
+            TriggerControlViewModel.TriggerType.Countdown -> if (startDelayedTrigger) R.string.stop else R.string.start
+            TriggerControlViewModel.TriggerType.Bulb -> if (isBulbActive) R.string.turn_off else R.string.turn_on
+            else -> R.string.trigger_shutter
         }
-        Text(text = buttonText, modifier = Modifier.padding(end = Dimens.ButtonEndPadding))
+        Text(text = stringResource(buttonText), modifier = Modifier.padding(end = Dimens.ButtonEndPadding))
         Icon(
             imageVector = Icons.Default.Camera,
             contentDescription = null,

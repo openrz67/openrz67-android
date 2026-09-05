@@ -1,11 +1,8 @@
 package dev.hellevang.openrz67.ui.components
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
@@ -18,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import dev.hellevang.openrz67.R
 import androidx.compose.ui.unit.dp
 import dev.hellevang.openrz67.ui.theme.Dimens
 
@@ -30,17 +29,7 @@ fun CountdownDisplay(
 ) {
     var dropdownExpanded by remember { mutableStateOf(false) }
     
-    val durationOptions = listOf(
-        2 to "2s",
-        5 to "5s", 
-        10 to "10s",
-        15 to "15s",
-        30 to "30s",
-        60 to "1m",
-        120 to "2m",
-        180 to "3m",
-        240 to "4m"
-    )
+    val durationOptions = listOf(2, 5, 10, 15, 30, 60, 120, 180, 240)
     if (startDelayedTrigger) {
         if (countdownTimeLeft > 0) {
             Text(
@@ -56,7 +45,7 @@ fun CountdownDisplay(
             Text(
                 fontSize = Dimens.BodyTextSize,
                 color = MaterialTheme.colors.onBackground,
-                text = "Start"
+                text = stringResource(R.string.countdown_prefix)
             )
             
             Box {
@@ -64,21 +53,21 @@ fun CountdownDisplay(
                     onClick = { dropdownExpanded = true },
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
-                    Text(durationOptions.find { it.first == countdownDuration }?.second ?: "${countdownDuration}s")
+                    Text(durationLabel(countdownDuration))
                 }
                 
                 DropdownMenu(
                     expanded = dropdownExpanded,
                     onDismissRequest = { dropdownExpanded = false }
                 ) {
-                    durationOptions.forEach { (seconds, label) ->
+                    durationOptions.forEach { seconds ->
                         DropdownMenuItem(
                             onClick = {
                                 onDurationChange(seconds)
                                 dropdownExpanded = false
                             }
                         ) {
-                            Text(label)
+                            Text(durationLabel(seconds))
                         }
                     }
                 }
@@ -87,8 +76,12 @@ fun CountdownDisplay(
             Text(
                 fontSize = Dimens.BodyTextSize,
                 color = MaterialTheme.colors.onBackground,
-                text = "countdown"
+                text = stringResource(R.string.countdown_suffix)
             )
         }
     }
 }
+@Composable
+private fun durationLabel(seconds: Int): String =
+    if (seconds % 60 == 0) stringResource(R.string.minutes_short, seconds / 60)
+    else stringResource(R.string.seconds_short, seconds)

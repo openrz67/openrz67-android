@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
         if (granted.values.all { it }) {
             ensureBluetoothEnabled()
         } else {
-            Toast.makeText(this, "Bluetooth permission is required", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_LONG).show()
         }
     }
 
