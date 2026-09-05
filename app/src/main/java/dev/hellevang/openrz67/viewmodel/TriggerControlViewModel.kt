@@ -1,5 +1,6 @@
 package dev.hellevang.openrz67.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.hellevang.openrz67.bluetooth.BluetoothManager
@@ -10,131 +11,119 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class TriggerControlViewModel(
-    private val bluetoothManager: BluetoothManager
-) : ViewModel() {
-    
-    // Trigger type state
+class TriggerControlViewModel : ViewModel() {
+
+    private val bluetoothManager = BluetoothManager(viewModelScope)
+    private var bluetoothStarted = false
+
     private val _triggerType = MutableStateFlow(TriggerType.Direct)
     val triggerType: StateFlow<TriggerType> = _triggerType.asStateFlow()
-    
-    // Countdown state
+
     private val _startDelayedTrigger = MutableStateFlow(false)
     val startDelayedTrigger: StateFlow<Boolean> = _startDelayedTrigger.asStateFlow()
-    
+
     private val _countdownTimeLeft = MutableStateFlow(0)
     val countdownTimeLeft: StateFlow<Int> = _countdownTimeLeft.asStateFlow()
-    
+
     private val _countdownDuration = MutableStateFlow(10)
     val countdownDuration: StateFlow<Int> = _countdownDuration.asStateFlow()
-    
-    // Bulb mode state
+
     private val _isBulbActive = MutableStateFlow(false)
     val isBulbActive: StateFlow<Boolean> = _isBulbActive.asStateFlow()
-    
-    // Bluetooth state (forwarded from BluetoothManager)
+
     val connectionState: StateFlow<String> = bluetoothManager.connectionState
     val isConnected: StateFlow<Boolean> = bluetoothManager.isConnected
-    
+
     private var countdownJob: Job? = null
-    
+
     enum class TriggerType {
         Direct,
         Countdown,
         Bulb
     }
-    
-    fun toggleTriggerType() {
-        // If leaving bulb mode and it's active, turn it off
-        if (_triggerType.value == TriggerType.Bulb && _isBulbActive.value) {
-            _isBulbActive.value = false
-            bluetoothManager.sendSignal(BluetoothManager.SignalType.BulbMode, false)
-        }
 
-        // If leaving countdown mode while a countdown is running, cancel it —
-        // otherwise the trigger keeps blinking and fires when it expires
+    /** Call once permissions are granted and Bluetooth is on. Safe to call repeatedly. */
+    fun startBluetooth() {
+        if (bluetoothStarted) return
+        bluetoothStarted = true
+        bluetoothManager.initialize()
+    }
+
+    fun reconnectBluetooth() {
+        bluetoothStarted = true
+        bluetoothManager.manualReconnect()
+    }
+
+    fun toggleTriggerType() {
+        if (_triggerType.value == TriggerType.Bulb && _isBulbActive.value) {
+            setBulb(false)
+        }
         if (_triggerType.value == TriggerType.Countdown && _startDelayedTrigger.value) {
             stopCountdown()
         }
-
         _triggerType.value = when (_triggerType.value) {
             TriggerType.Direct -> TriggerType.Countdown
             TriggerType.Countdown -> TriggerType.Bulb
             TriggerType.Bulb -> TriggerType.Direct
         }
     }
-    
+
     fun handleTriggerButtonClick() {
         when (_triggerType.value) {
-            TriggerType.Direct -> {
-                bluetoothManager.sendSignal(BluetoothManager.SignalType.Trigger)
-            }
-            TriggerType.Countdown -> {
-                if (_startDelayedTrigger.value) {
-                    // Cancel countdown
-                    stopCountdown()
-                } else {
-                    // Start countdown
-                    startCountdown()
-                }
-            }
-            TriggerType.Bulb -> {
-                toggleBulbMode()
-            }
+            TriggerType.Direct -> send { bluetoothManager.sendSignal(BluetoothManager.SignalType.Trigger) }
+            TriggerType.Countdown -> if (_startDelayedTrigger.value) stopCountdown() else startCountdown()
+            TriggerType.Bulb -> setBulb(!_isBulbActive.value)
         }
     }
-    
+
     fun setCountdownDuration(duration: Int) {
         if (duration in 1..255) {
             _countdownDuration.value = duration
         }
     }
-    
-    private fun toggleBulbMode() {
-        val newState = !_isBulbActive.value
-        _isBulbActive.value = newState
-        bluetoothManager.sendSignal(BluetoothManager.SignalType.BulbMode, newState)
+
+    private fun setBulb(on: Boolean) = send(onSuccess = { _isBulbActive.value = on }) {
+        bluetoothManager.sendSignal(BluetoothManager.SignalType.BulbMode, on)
     }
-    
-    fun reconnectBluetooth() {
-        bluetoothManager.manualReconnect()
+
+    private fun startCountdown() = send(onSuccess = { startCountdownTimer() }) {
+        bluetoothManager.sendCountdown(_countdownDuration.value, true)
     }
-    
-    private fun startCountdown() {
-        bluetoothManager.sendMultiByteCountdown(_countdownDuration.value, true)
-        _startDelayedTrigger.value = true
-        startCountdownTimer()
-    }
-    
+
     private fun stopCountdown() {
-        bluetoothManager.sendMultiByteCountdown(_countdownDuration.value, false)
-        _startDelayedTrigger.value = false
         stopCountdownTimer()
+        send { bluetoothManager.sendCountdown(_countdownDuration.value, false) }
     }
-    
+
+    /** Runs a BLE write; only updates local state via [onSuccess] if the write succeeded. */
+    private fun send(onSuccess: () -> Unit = {}, write: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                write()
+                onSuccess()
+            } catch (e: Exception) {
+                Log.w("TriggerControlViewModel", "BLE write failed: ${e.message}")
+            }
+        }
+    }
+
     private fun startCountdownTimer() {
         countdownJob?.cancel()
         val duration = _countdownDuration.value
+        _startDelayedTrigger.value = true
         _countdownTimeLeft.value = duration
         countdownJob = viewModelScope.launch {
             repeat(duration) {
                 delay(1000)
                 _countdownTimeLeft.value = _countdownTimeLeft.value - 1
             }
-            // Countdown finished
             _startDelayedTrigger.value = false
-            _countdownTimeLeft.value = 0
         }
     }
-    
+
     private fun stopCountdownTimer() {
         countdownJob?.cancel()
+        _startDelayedTrigger.value = false
         _countdownTimeLeft.value = 0
-    }
-    
-    override fun onCleared() {
-        super.onCleared()
-        countdownJob?.cancel()
-        bluetoothManager.cleanup()
     }
 }

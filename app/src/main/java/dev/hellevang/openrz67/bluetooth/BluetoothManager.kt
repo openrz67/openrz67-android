@@ -1,9 +1,6 @@
 package dev.hellevang.openrz67.bluetooth
 
-import android.bluetooth.BluetoothManager
-import android.bluetooth.le.BluetoothLeScanner
-import android.content.Context
-import com.juul.kable.ConnectionLostException
+import android.util.Log
 import com.juul.kable.Filter
 import com.juul.kable.Peripheral
 import com.juul.kable.Scanner
@@ -11,11 +8,6 @@ import com.juul.kable.State
 import com.juul.kable.characteristicOf
 import com.juul.kable.peripheral
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,20 +17,18 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.pow
 
-class BluetoothManager(
-    private val context: Context,
-    private val scope: CoroutineScope = MainScope()
-) {
-    private lateinit var bluetoothLeScanner: BluetoothLeScanner
+/**
+ * Owns the BLE connection to the openrz67-trigger. The peripheral is bound to [scope];
+ * cancelling the scope disconnects it and stops the reconnect loop.
+ */
+class BluetoothManager(private val scope: CoroutineScope) {
     private lateinit var peripheral: Peripheral
     private val connectionAttempt = AtomicInteger()
 
-    // State management
     private val _connectionState = MutableStateFlow("Not connected")
     val connectionState: StateFlow<String> = _connectionState.asStateFlow()
 
@@ -46,24 +36,23 @@ class BluetoothManager(
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     companion object {
-        // UUID of openrz67-trigger services
+        private const val TAG = "BluetoothManager"
         val TARGET_SERVICE_UUID: UUID = UUID.fromString("c9239c9e-6fc9-4168-b3aa-53105eb990b0")
-        
-        // UUID of openrz67-trigger characteristic
         val TARGET_CHARACTERISTIC_UUID: UUID = UUID.fromString("458d4dc9-349f-401d-b092-a2b1c55f5319")
     }
 
-    enum class SignalType {
-        Trigger,
-        ArduinoCountdown,
-        BulbMode
+    private val characteristic = characteristicOf(
+        TARGET_SERVICE_UUID.toString(),
+        TARGET_CHARACTERISTIC_UUID.toString()
+    )
+
+    /** Firmware command codes: base value = release/off, base + 1 = press/on. */
+    enum class SignalType(val base: Int) {
+        Trigger(10),
+        BulbMode(20)
     }
 
     fun initialize() {
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        val bluetoothAdapter = bluetoothManager.adapter
-        bluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
-
         scope.launch {
             try {
                 _connectionState.value = "Scanning for devices..."
@@ -72,25 +61,17 @@ class BluetoothManager(
                 }.advertisements.first()
 
                 _connectionState.value = "Device found, connecting..."
-                awaitAll(
-                    async {
-                        peripheral = scope.peripheral(advertisement)
-                    }
-                )
-                
+                peripheral = scope.peripheral(advertisement)
+
                 enableAutoReconnect()
                 connect()
-                
-                // Observe connection state
-                scope.launch {
-                    peripheral.state.collect { state ->
-                        _connectionState.value = state.toString()
-                        _isConnected.value = state is State.Connected
-                        println("Connection State: ${state}")
-                    }
+
+                peripheral.state.collect { state ->
+                    _connectionState.value = state.toString()
+                    _isConnected.value = state is State.Connected
                 }
             } catch (e: Exception) {
-                println("Failed to initialize Bluetooth: ${e.message}")
+                Log.w(TAG, "Failed to initialize Bluetooth", e)
                 _connectionState.value = "Failed to initialize: ${e.message}"
             }
         }
@@ -100,144 +81,44 @@ class BluetoothManager(
         peripheral.state
             .filter { it is State.Disconnected }
             .onEach {
-                val currentAttempt = connectionAttempt.get()
-                val timeMillis = backoff(
-                    retry = connectionAttempt.getAndIncrement()
-                )
-                
-                // Cap the backoff at 30 seconds max and reset after 10 failed attempts
-                val cappedTimeMillis = minOf(timeMillis, 30_000L)
-                if (currentAttempt >= 10) {
-                    println("Resetting connection attempts after 10 failures")
-                    connectionAttempt.set(1) // Reset but keep trying
-                }
-                
-                println("Waiting $cappedTimeMillis ms to reconnect (attempt ${currentAttempt + 1})...")
-                delay(cappedTimeMillis)
+                val attempt = connectionAttempt.getAndIncrement()
+                val waitMillis = minOf((500L * 2f.pow(attempt)).toLong(), 30_000L)
+                Log.d(TAG, "Reconnecting in $waitMillis ms (attempt ${attempt + 1})")
+                delay(waitMillis)
                 connect()
             }
             .launchIn(this)
     }
 
     private fun CoroutineScope.connect() {
-        connectionAttempt.incrementAndGet()
         launch {
-            println("Connecting...")
             try {
                 peripheral.connect()
                 connectionAttempt.set(0)
-            } catch (e: ConnectionLostException) {
-                println("Connection attempt failed: ${e.message}")
+            } catch (e: Exception) {
+                Log.w(TAG, "Connection attempt failed: ${e.message}")
             }
         }
     }
 
-    fun sendMultiByteCountdown(durationSeconds: Int, start: Boolean = true): Job {
-        return scope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val characteristic = characteristicOf(
-                        TARGET_SERVICE_UUID.toString(),
-                        TARGET_CHARACTERISTIC_UUID.toString()
-                    )
-                    
-                    val command: Byte = 3
-                    val duration: Byte = durationSeconds.toByte()
-                    val action: Byte = if (start) 1 else 0
-                    
-                    val data = byteArrayOf(command, duration, action)
-                    
-                    if (start) {
-                        println("Sending multi-byte countdown start: duration=${durationSeconds}s")
-                    } else {
-                        println("Sending multi-byte countdown stop")
-                    }
-                    
-                    peripheral.write(characteristic, data)
-                } catch (e: Exception) {
-                    println("Failed to send multi-byte countdown: ${e.message}")
-                }
-            }
-        }
+    /** Throws if the write fails; callers decide how to surface that. */
+    suspend fun sendCountdown(durationSeconds: Int, start: Boolean) {
+        val action: Byte = if (start) 1 else 0
+        peripheral.write(characteristic, byteArrayOf(3, durationSeconds.toByte(), action))
     }
 
-    fun sendSignal(signalType: SignalType = SignalType.Trigger, on: Boolean = true): Job {
-        return scope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val characteristic = characteristicOf(
-                        TARGET_SERVICE_UUID.toString(),
-                        TARGET_CHARACTERISTIC_UUID.toString()
-                    )
-                    
-                    when (signalType) {
-                        SignalType.Trigger -> {
-                            if (on) {
-                                println("Sending trigger signal")
-                                peripheral.write(characteristic, byteArrayOf(11.toByte()))
-                            } else {
-                                println("Sending stop signal")
-                                peripheral.write(characteristic, byteArrayOf(10.toByte()))
-                            }
-                        }
-                        SignalType.ArduinoCountdown -> {
-                            if (on) {
-                                println("Sending Arduino countdown start signal")
-                                peripheral.write(characteristic, byteArrayOf(31.toByte()))
-                            } else {
-                                println("Sending Arduino countdown stop signal")
-                                peripheral.write(characteristic, byteArrayOf(30.toByte()))
-                            }
-                        }
-                        SignalType.BulbMode -> {
-                            if (on) {
-                                println("Sending button 2 press signal (bulb mode on)")
-                                peripheral.write(characteristic, byteArrayOf(21.toByte()))
-                            } else {
-                                println("Sending button 2 release signal (bulb mode off)")
-                                peripheral.write(characteristic, byteArrayOf(20.toByte()))
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    println("Failed to send signal: ${e.message}")
-                }
-            }
-        }
+    suspend fun sendSignal(signalType: SignalType, on: Boolean = true) {
+        val code = signalType.base + if (on) 1 else 0
+        peripheral.write(characteristic, byteArrayOf(code.toByte()))
     }
-
-    private fun backoff(
-        base: Long = 500L,
-        multiplier: Float = 2f,
-        retry: Int,
-    ): Long = (base * multiplier.pow(retry - 1)).toLong()
 
     fun manualReconnect() {
-        scope.launch {
-            try {
-                _connectionState.value = "Manual reconnection..."
-                connectionAttempt.set(0) // Reset attempts for manual reconnect
-                if (this@BluetoothManager::peripheral.isInitialized) {
-                    connect()
-                } else {
-                    initialize()
-                }
-            } catch (e: Exception) {
-                println("Manual reconnection failed: ${e.message}")
-                _connectionState.value = "Manual reconnection failed: ${e.message}"
-            }
-        }
-    }
-
-    fun cleanup() {
-        scope.launch {
-            try {
-                if (this@BluetoothManager::peripheral.isInitialized && _isConnected.value) {
-                    peripheral.disconnect()
-                }
-            } catch (e: Exception) {
-                println("Error during cleanup: ${e.message}")
-            }
+        connectionAttempt.set(0)
+        if (::peripheral.isInitialized) {
+            _connectionState.value = "Manual reconnection..."
+            scope.connect()
+        } else {
+            initialize()
         }
     }
 }
