@@ -11,7 +11,7 @@
     <string name="direct_hint">Press the shutter to take a picture</string>
     <string name="countdown_delay">Delay</string>
     <string name="countdown_running_hint">Shutter fires when the count reaches zero</string>
-    <string name="bulb_hint_off">Open the shutter for a long exposure</string>
+    <string name="bulb_hint_off">Set the camera to B (bulb) first. Otherwise it just takes one normal picture.</string>
     <string name="bulb_hint_on">Shutter is open</string>
 
     <string name="shutter">Shutter</string>
